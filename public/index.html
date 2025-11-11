@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Generate API Key — Simple Form</title>
+  <style>
+    :root{--bg:#0f1724;--card:#0b1220;--accent:#06b6d4;--muted:#94a3b8;--glass:rgba(255,255,255,0.03)}
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family:Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
+      background:linear-gradient(180deg,var(--bg),#071021);
+      color:#e6eef6;
+      min-height:100vh;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:24px;
+    }
+    .card{
+      width:100%;
+      max-width:720px;
+      background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+      border-radius:12px;
+      box-shadow:0 6px 30px rgba(2,6,23,0.7);
+      padding:24px;
+      border:1px solid rgba(255,255,255,0.03);
+    }
+    h1{margin:0 0 8px 0;font-size:20px}
+    p.lead{margin:0 0 18px 0;color:var(--muted);font-size:14px}
+    form{display:grid;grid-template-columns:1fr;gap:12px}
+    label{font-size:13px;color:var(--muted)}
+    input[type="text"], .output{
+      width:100%;
+      padding:10px 12px;
+      border-radius:8px;
+      border:1px solid rgba(255,255,255,0.04);
+      background:var(--glass);
+      color:inherit;
+      font-size:14px;
+      outline:none;
+    }
+    .row{display:flex;gap:8px}
+    .btn{
+      padding:10px 14px;border-radius:8px;border:0;cursor:pointer;font-weight:600;
+      background:linear-gradient(90deg,var(--accent),#06b6d4cc);color:#022;transition:transform .08s ease
+    }
+    .btn:active{transform:translateY(1px)}
+    .btn.ghost{background:transparent;border:1px solid rgba(255,255,255,0.06);color:var(--muted);font-weight:600}
+    .meta{font-size:13px;color:var(--muted);margin-top:8px}
+    .flex-between{display:flex;align-items:center;justify-content:space-between}
+    @media (max-width:540px){.row{flex-direction:column}}
+  </style>
+</head>
+<body>
+  <main class="card" role="main">
+    <header>
+      <h1>Generate API Key</h1>
+      <p class="lead">Form sederhana untuk membuat dan menyimpan API key ke database MySQL.</p>
+    </header>
+
+    <form id="form" onsubmit="return false;">
+      <div>
+        <label for="appName">Nama Aplikasi</label>
+        <input id="appName" name="appName" type="text" placeholder="Contoh: MyWebApp" required />
+      </div>
+
+      <div class="row">
+        <button class="btn" id="generate">Generate API Key</button>
+      </div>
+
+      <div>
+        <label for="apikey">Hasil API Key</label>
+        <div class="flex-between" style="gap:8px">
+          <input id="apikey" class="output" readonly placeholder="Klik Generate untuk membuat API key" />
+          <button class="btn ghost" id="copy">Copy</button>
+        </div>
+        <div class="meta">Kunci disimpan otomatis ke database <b>api_key</b> (tabel <b>api_keys</b>).</div>
+      </div>
+    </form>
+  </main>
+
+  <script>
+    const genBtn = document.getElementById('generate');
+    const copyBtn = document.getElementById('copy');
+    const out = document.getElementById('apikey');
+    const appInput = document.getElementById('appName');
+
+    genBtn.addEventListener('click', async (e)=>{
+      e.preventDefault();
+      const appName = appInput.value.trim();
+      if (!appName) {
+        alert('Nama aplikasi wajib diisi!');
+        return;
+      }
+
+      try {
+        const res = await fetch('/create', {
+          method: 'POST',
+          headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({ appName })
+        });
+
+        const data = await res.json();
+        if (res.ok && data.apiKey) {
+          out.value = data.apiKey;
+        } else {
+          alert(data.message || 'Gagal membuat API key');
+        }
+      } catch (err) {
+        console.error(err);
+        alert('Terjadi kesalahan saat menghubungi server');
+      }
+    });
+
+    copyBtn.addEventListener('click', async (e)=>{
+      e.preventDefault();
+      if(!out.value){
+        alert('Belum ada API key. Klik Generate dulu.');
+        return;
+      }
+      await navigator.clipboard.writeText(out.value);
+      copyBtn.textContent = 'Copied!';
+      setTimeout(()=>copyBtn.textContent='Copy',1200);
+    });
+  </script>
+</body>
+</html>
