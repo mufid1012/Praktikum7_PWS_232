@@ -25,28 +25,32 @@ app.get('/', (req, res) => {
 });
 
 // generate API key & simpan ke DB
-app.post('/create', async (req, res) => {
-    console.log('POST /create diterima:', req.body);
+// endpoint validasi API key
+app.post('/validate', async (req, res) => {
+    console.log('POST /validate diterima:', req.body);
 
-    const length = req.body.length || 32;
-    const label = req.body.label || null;
+    const { apiKey } = req.body;
+    if (!apiKey) {
+        return res.status(400).json({ success: false, message: 'API key tidak boleh kosong' });
+    }
 
     try {
-        const apiKey = crypto.randomBytes(length).toString('hex');
-        const salt = crypto.randomBytes(16).toString('hex');
-        const hash = crypto.createHmac('sha256', salt).update(apiKey).digest('hex');
+        // ambil semua hash & salt dari database
+        const [rows] = await pool.query("SELECT hash, salt FROM api_keys");
 
-        // simpan ke database
-        await pool.query(
-            "INSERT INTO api_keys (label, hash, salt, created_at) VALUES (?, ?, ?, NOW())",
-            [label, hash, salt]
-        );
+        for (const row of rows) {
+            const testHash = crypto.createHmac('sha256', row.salt).update(apiKey).digest('hex');
+            if (testHash === row.hash) {
+                console.log('✅ API key valid');
+                return res.json({ success: true, message: 'API key valid' });
+            }
+        }
 
-        console.log('✅ API key berhasil disimpan ke DB');
-        res.json({ success: true, apiKey });
+        console.log('❌ API key tidak valid');
+        res.json({ success: false, message: 'API key tidak valid' });
     } catch (err) {
-        console.error('❌ Error insert ke DB:', err);
-        res.status(500).json({ success: false, message: 'Gagal menyimpan ke DB' });
+        console.error('❌ Error validasi ke DB:', err);
+        res.status(500).json({ success: false, message: 'Gagal memeriksa API key' });
     }
 });
 
